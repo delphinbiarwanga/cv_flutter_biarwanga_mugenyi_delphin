@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:cv_flutter_biarwanga_mugenyi_delphin/models/cv_data.dart';
 import 'package:cv_flutter_biarwanga_mugenyi_delphin/screens/cv_home_screen.dart';
 import 'package:cv_flutter_biarwanga_mugenyi_delphin/screens/family_screen.dart';
+import 'package:cv_flutter_biarwanga_mugenyi_delphin/screens/stats_screen.dart';
 import 'package:cv_flutter_biarwanga_mugenyi_delphin/screens/contact_screen.dart';
 import 'package:cv_flutter_biarwanga_mugenyi_delphin/screens/login_screen.dart';
+import 'package:cv_flutter_biarwanga_mugenyi_delphin/services/session_service.dart';
 import 'package:cv_flutter_biarwanga_mugenyi_delphin/services/url_launcher_service.dart';
 
 class MainNavigationScreen extends StatefulWidget {
@@ -22,18 +24,36 @@ class MainNavigationScreen extends StatefulWidget {
 
 class _MainNavigationScreenState extends State<MainNavigationScreen> {
   int _currentIndex = 0;
+  String _userEmail = CVData.email;
 
   final List<Widget> _pages = const [
     CVHomeScreen(),
     FamilyScreen(),
+    StatsScreen(),
     ContactScreen(),
   ];
 
   final List<String> _titles = const [
     "Mon CV Professionnel",
-    "Ma Famille",
+    "Ma Famille (API BDD)",
+    "Statistiques de la Famille",
     "Mes Coordonnées",
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserSession();
+  }
+
+  Future<void> _loadUserSession() async {
+    final user = await SessionService.getUserSession();
+    if (user != null && user.email.isNotEmpty) {
+      setState(() {
+        _userEmail = user.email;
+      });
+    }
+  }
 
   void _onItemTapped(int index) {
     setState(() {
@@ -54,7 +74,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           ],
         ),
         content: const Text(
-          "Êtes-vous sûr de vouloir vous déconnecter et retourner à la page de connexion ?",
+          "Êtes-vous sûr de vouloir vous déconnecter et fermer votre session ?",
         ),
         actions: [
           TextButton(
@@ -66,8 +86,11 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
               backgroundColor: Colors.redAccent,
               foregroundColor: Colors.white,
             ),
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(context); // fermer la boîte de dialogue
+              await SessionService.clearSession(); // Effacer la session SharedPreferences
+
+              if (!context.mounted) return;
               Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(builder: (context) => const LoginScreen()),
@@ -92,34 +115,38 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
             Text("À propos du projet"),
           ],
         ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              "Application Mobile CV Flutter",
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-            ),
-            const SizedBox(height: 6),
-            const Text("Auteur : BIARWANGA MUGENYI DELPHIN"),
-            const Text("Profil : ETUDIANT"),
-            const Text("Filière : Licence en Réseau, Système & Télécom"),
-            const Divider(height: 20),
-            const Text(
-              "Contenu de l'application :",
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 4),
-            const Text("• Page 1 : Page de connexion"),
-            const Text("• Page 2 : CV complet avec stages, projets, compétences et loisirs"),
-            const Text("• Page 3 : Présentation des membres de la famille"),
-            const Text("• Page 4 : Coordonnées cliquables (Téléphone, Email, LinkedIn, GitHub)"),
-            const SizedBox(height: 12),
-            const Text(
-              "Projet réalisé dans le cadre du TP de Développement Mobile Flutter.",
-              style: TextStyle(fontSize: 12, color: Colors.grey),
-            ),
-          ],
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                "Application Mobile CV Flutter & API XAMPP",
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+              const SizedBox(height: 6),
+              const Text("Auteur : BIARWANGA MUGENYI DELPHIN"),
+              const Text("Profil : ETUDIANT"),
+              const Text("Formation : Licence Réseau Système & Télécom"),
+              const Divider(height: 20),
+              const Text(
+                "Fonctionnalités & Intégration :",
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 4),
+              const Text("• Authentification (Login & Register) connectée à l'API PHP"),
+              const Text("• Session persistante SharedPreferences"),
+              const Text("• CRUD complet Membres de famille (GET, POST, PUT, DELETE)"),
+              const Text("• Gestion upload d'images multipart & dates AAAA-MM-JJ"),
+              const Text("• Statistiques dynamiques en temps réel"),
+              const Text("• Contacts interactifs (Appels, Emails, WhatsApp, URLs)"),
+              const SizedBox(height: 12),
+              const Text(
+                "API locale : XAMPP (api-test)",
+                style: TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+            ],
+          ),
         ),
         actions: [
           ElevatedButton(
@@ -154,7 +181,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       drawer: Drawer(
         child: Column(
           children: [
-            // En-tête personnalisé avec la photo de Delphin
+            // En-tête personnalisé
             Container(
               width: double.infinity,
               padding: const EdgeInsets.fromLTRB(16, 44, 16, 20),
@@ -177,12 +204,12 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                     child: ClipOval(
                       child: Image.asset(
                         CVData.profileImage,
-                        width: 72,
-                        height: 72,
+                        width: 70,
+                        height: 70,
                         fit: BoxFit.cover,
                         errorBuilder: (context, error, stackTrace) => Container(
-                          width: 72,
-                          height: 72,
+                          width: 70,
+                          height: 70,
                           color: Colors.white24,
                           child: const Icon(Icons.person, size: 40, color: Colors.white),
                         ),
@@ -194,7 +221,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                     CVData.fullName,
                     style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 16,
+                      fontSize: 15.5,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -206,7 +233,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: const Text(
-                      "PROFIL : ${CVData.profileTitle}",
+                      "PROFIL : ETUDIANT",
                       style: TextStyle(
                         color: Color(0xFF2DD4BF),
                         fontSize: 10,
@@ -215,22 +242,21 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                     ),
                   ),
                   const SizedBox(height: 4),
-                  Text(
-                    CVData.degree,
-                    style: TextStyle(
-                      color: Colors.white.withAlpha(200),
-                      fontSize: 11,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    CVData.email,
-                    style: TextStyle(
-                      color: Colors.white.withAlpha(160),
-                      fontSize: 11,
-                    ),
+                  Row(
+                    children: [
+                      const Icon(Icons.account_circle, size: 13, color: Colors.white70),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          _userEmail,
+                          style: TextStyle(
+                            color: Colors.white.withAlpha(200),
+                            fontSize: 11,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -256,7 +282,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                   ListTile(
                     leading: const Icon(Icons.diversity_1_rounded, color: Color(0xFF0D9488)),
                     title: const Text("Page 3 : Ma Famille"),
-                    subtitle: const Text("Membres de la famille & liens"),
+                    subtitle: const Text("CRUD & synchronisation BDD"),
                     selected: _currentIndex == 1,
                     selectedTileColor: const Color(0xFF0D9488).withAlpha(25),
                     onTap: () {
@@ -265,14 +291,25 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                     },
                   ),
                   ListTile(
-                    leading: const Icon(Icons.contact_phone_rounded, color: Color(0xFFD97706)),
-                    title: const Text("Page 4 : Mes Coordonnées"),
-                    subtitle: const Text("Contacts et liens cliquables"),
+                    leading: const Icon(Icons.analytics_rounded, color: Color(0xFF2563EB)),
+                    title: const Text("Page Statistiques"),
+                    subtitle: const Text("Analyses calculées en temps réel"),
                     selected: _currentIndex == 2,
-                    selectedTileColor: const Color(0xFFD97706).withAlpha(25),
+                    selectedTileColor: const Color(0xFF2563EB).withAlpha(25),
                     onTap: () {
                       Navigator.pop(context);
                       _onItemTapped(2);
+                    },
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.contact_phone_rounded, color: Color(0xFFD97706)),
+                    title: const Text("Page 4 : Mes Coordonnées"),
+                    subtitle: const Text("Contacts et liens cliquables"),
+                    selected: _currentIndex == 3,
+                    selectedTileColor: const Color(0xFFD97706).withAlpha(25),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _onItemTapped(3);
                     },
                   ),
                   const Divider(height: 24),
@@ -328,7 +365,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
               ),
             ),
 
-            // Déconnexion en bas du Drawer
+            // Déconnexion
             const Divider(height: 1),
             ListTile(
               leading: const Icon(Icons.logout_rounded, color: Colors.redAccent),
@@ -369,6 +406,11 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
             icon: Icon(Icons.diversity_1_outlined),
             selectedIcon: Icon(Icons.diversity_1_rounded),
             label: "Famille",
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.analytics_outlined),
+            selectedIcon: Icon(Icons.analytics_rounded),
+            label: "Statistiques",
           ),
           NavigationDestination(
             icon: Icon(Icons.contact_phone_outlined),

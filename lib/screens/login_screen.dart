@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cv_flutter_biarwanga_mugenyi_delphin/models/cv_data.dart';
+import 'package:cv_flutter_biarwanga_mugenyi_delphin/services/api_service.dart';
+import 'package:cv_flutter_biarwanga_mugenyi_delphin/services/session_service.dart';
 import 'package:cv_flutter_biarwanga_mugenyi_delphin/screens/main_navigation_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -11,84 +13,140 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _usernameController = TextEditingController(text: "delphin");
-  final _passwordController = TextEditingController(text: "1234");
 
+  final _emailController = TextEditingController(text: "delphinbiarwanga1@gmail.com");
+  final _passwordController = TextEditingController(text: "123456");
+  final _confirmPasswordController = TextEditingController();
+
+  bool _isLoginMode = true; // true = Connexion, false = Inscription
   bool _isPasswordObscured = true;
+  bool _isConfirmPasswordObscured = true;
   bool _isLoading = false;
-  bool _rememberMe = true;
+  String? _errorMessage;
 
   @override
   void dispose() {
-    _usernameController.dispose();
+    _emailController.dispose();
     _passwordController.dispose();
+    _confirmPasswordController.dispose();
     super.dispose();
   }
 
-  void _handleLogin() async {
+  void _switchAuthMode() {
+    setState(() {
+      _isLoginMode = !_isLoginMode;
+      _errorMessage = null;
+      _confirmPasswordController.clear();
+    });
+  }
+
+  Future<void> _handleSubmit() async {
     if (!_formKey.currentState!.validate()) {
       return;
     }
 
     setState(() {
       _isLoading = true;
+      _errorMessage = null;
     });
 
-    // Simuler une courte vérification pour un effet visuel fluide
-    await Future.delayed(const Duration(milliseconds: 650));
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
 
-    if (!mounted) return;
+    try {
+      if (_isLoginMode) {
+        // 1. CONNEXION (POST /accounts/login)
+        final user = await ApiService.login(email: email, password: password);
+        await SessionService.saveUserSession(user);
 
-    setState(() {
-      _isLoading = false;
-    });
-
-    // Message de bienvenue
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.check_circle_outline, color: Colors.white),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                "Bienvenue, ${_usernameController.text.trim()} !",
-                style: const TextStyle(fontWeight: FontWeight.w600),
-              ),
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle_outline, color: Colors.white),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    "Connexion réussie ! Bienvenue ${user.email}",
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
-        backgroundColor: const Color(0xFF0D9488),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        duration: const Duration(seconds: 2),
-      ),
-    );
+            backgroundColor: const Color(0xFF0D9488),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      } else {
+        // 2. INSCRIPTION (POST /accounts/register)
+        final user = await ApiService.register(email: email, password: password);
+        await SessionService.saveUserSession(user);
 
-    // Navigation vers la page d'accueil principale avec transition fluide
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const MainNavigationScreen(),
-      ),
-    );
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle_outline, color: Colors.white),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    "Compte créé avec succès ! Bienvenue ${user.email}",
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: const Color(0xFF0D9488),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+
+      if (!mounted) return;
+
+      // Navigation vers l'application principale
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const MainNavigationScreen(),
+        ),
+      );
+    } on ApiException catch (e) {
+      setState(() {
+        _errorMessage = e.fullErrorMessage;
+      });
+    } catch (e) {
+      setState(() {
+        _errorMessage = "Erreur inattendue : $e";
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return Scaffold(
       body: Container(
         width: double.infinity,
         height: double.infinity,
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              const Color(0xFF1E3A8A),
-              const Color(0xFF0F172A),
+              Color(0xFF1E3A8A),
+              Color(0xFF0F172A),
             ],
           ),
         ),
@@ -101,7 +159,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    // Avatar / Logo
+                    // Avatar / Photo de profil Delphin
                     Container(
                       padding: const EdgeInsets.all(4),
                       decoration: BoxDecoration(
@@ -118,17 +176,17 @@ class _LoginScreenState extends State<LoginScreen> {
                       child: ClipOval(
                         child: Image.asset(
                           CVData.profileImage,
-                          width: 100,
-                          height: 100,
+                          width: 88,
+                          height: 88,
                           fit: BoxFit.cover,
                           errorBuilder: (context, error, stackTrace) {
                             return Container(
-                              width: 100,
-                              height: 100,
+                              width: 88,
+                              height: 88,
                               color: Colors.white24,
                               child: const Icon(
                                 Icons.person,
-                                size: 55,
+                                size: 50,
                                 color: Colors.white,
                               ),
                             );
@@ -136,42 +194,33 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 18),
+                    const SizedBox(height: 14),
 
                     // Titres
                     const Text(
-                      "PORTAIL CV PROFESSIONNEL",
+                      "PORTAIL CV & FAMILLE XAMPP",
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        fontSize: 13,
+                        fontSize: 12,
                         fontWeight: FontWeight.bold,
                         letterSpacing: 2.0,
                         color: Color(0xFF2DD4BF),
                       ),
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 4),
                     Text(
                       CVData.fullName,
                       textAlign: TextAlign.center,
                       style: const TextStyle(
-                        fontSize: 21,
+                        fontSize: 20,
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
                         letterSpacing: 0.5,
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    const Text(
-                      "Connexion pour accéder au CV, à la famille et aux contacts",
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: Colors.white70,
-                      ),
-                    ),
-                    const SizedBox(height: 28),
+                    const SizedBox(height: 20),
 
-                    // Carte du formulaire de connexion
+                    // Carte du Formulaire
                     Card(
                       elevation: 8,
                       shadowColor: Colors.black45,
@@ -179,58 +228,143 @@ class _LoginScreenState extends State<LoginScreen> {
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Padding(
-                        padding: const EdgeInsets.all(24.0),
+                        padding: const EdgeInsets.all(22.0),
                         child: Form(
                           key: _formKey,
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              Text(
-                                "Authentification",
-                                style: theme.textTheme.titleLarge?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                  color: const Color(0xFF1E3A8A),
+                              // Onglets Bascule Connexion / Inscription
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.grey.shade100,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                padding: const EdgeInsets.all(4),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: GestureDetector(
+                                        onTap: () {
+                                          if (!_isLoginMode) _switchAuthMode();
+                                        },
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(vertical: 10),
+                                          decoration: BoxDecoration(
+                                            color: _isLoginMode ? const Color(0xFF1E3A8A) : Colors.transparent,
+                                            borderRadius: BorderRadius.circular(10),
+                                          ),
+                                          child: Text(
+                                            "Connexion",
+                                            textAlign: TextAlign.center,
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 14,
+                                              color: _isLoginMode ? Colors.white : Colors.grey.shade700,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    Expanded(
+                                      child: GestureDetector(
+                                        onTap: () {
+                                          if (_isLoginMode) _switchAuthMode();
+                                        },
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(vertical: 10),
+                                          decoration: BoxDecoration(
+                                            color: !_isLoginMode ? const Color(0xFF1E3A8A) : Colors.transparent,
+                                            borderRadius: BorderRadius.circular(10),
+                                          ),
+                                          child: Text(
+                                            "Inscription",
+                                            textAlign: TextAlign.center,
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 14,
+                                              color: !_isLoginMode ? Colors.white : Colors.grey.shade700,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
-                              const SizedBox(height: 6),
-                              Text(
-                                "Veuillez saisir vos identifiants pour continuer",
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: Colors.grey.shade600,
-                                ),
-                              ),
-                              const SizedBox(height: 22),
+                              const SizedBox(height: 18),
 
-                              // Champ Identifiant
+                              // Message d'erreur
+                              if (_errorMessage != null) ...[
+                                Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: Colors.red.shade50,
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(color: Colors.red.shade300),
+                                  ),
+                                  child: Row(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      const Icon(Icons.error_outline, color: Colors.redAccent, size: 20),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          _errorMessage!,
+                                          style: TextStyle(
+                                            color: Colors.red.shade800,
+                                            fontSize: 12.5,
+                                            height: 1.35,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                              ],
+
+                              // Champ Email (max 100)
                               TextFormField(
-                                controller: _usernameController,
-                                keyboardType: TextInputType.text,
+                                controller: _emailController,
+                                keyboardType: TextInputType.emailAddress,
                                 textInputAction: TextInputAction.next,
+                                maxLength: 100,
                                 decoration: InputDecoration(
-                                  labelText: "Identifiant",
-                                  hintText: "Entrez votre nom d'utilisateur",
-                                  prefixIcon: const Icon(Icons.person_outline),
+                                  labelText: "Adresse E-mail *",
+                                  hintText: "exemple@gmail.com",
+                                  prefixIcon: const Icon(Icons.alternate_email_rounded),
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(12),
                                   ),
+                                  counterText: "",
                                 ),
                                 validator: (value) {
                                   if (value == null || value.trim().isEmpty) {
-                                    return "Veuillez renseigner votre identifiant";
+                                    return "Veuillez renseigner votre email";
+                                  }
+                                  final email = value.trim();
+                                  if (!email.contains('@') || !email.contains('.')) {
+                                    return "Format d'email invalide";
+                                  }
+                                  if (email.length > 100) {
+                                    return "100 caractères maximum";
                                   }
                                   return null;
                                 },
                               ),
-                              const SizedBox(height: 16),
+                              const SizedBox(height: 14),
 
-                              // Champ Mot de passe (texte masqué)
+                              // Champ Mot de passe (min 6)
                               TextFormField(
                                 controller: _passwordController,
                                 obscureText: _isPasswordObscured,
-                                textInputAction: TextInputAction.done,
-                                onFieldSubmitted: (_) => _handleLogin(),
+                                textInputAction: _isLoginMode ? TextInputAction.done : TextInputAction.next,
+                                onFieldSubmitted: (_) {
+                                  if (_isLoginMode) _handleSubmit();
+                                },
                                 decoration: InputDecoration(
-                                  labelText: "Mot de passe",
+                                  labelText: "Mot de passe * (min. 6 caractères)",
                                   hintText: "••••••••",
                                   prefixIcon: const Icon(Icons.lock_outline),
                                   suffixIcon: IconButton(
@@ -245,56 +379,71 @@ class _LoginScreenState extends State<LoginScreen> {
                                         _isPasswordObscured = !_isPasswordObscured;
                                       });
                                     },
-                                    tooltip: _isPasswordObscured
-                                        ? "Afficher le mot de passe"
-                                        : "Masquer le mot de passe",
                                   ),
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                 ),
                                 validator: (value) {
-                                  if (value == null || value.trim().isEmpty) {
+                                  if (value == null || value.isEmpty) {
                                     return "Veuillez saisir votre mot de passe";
                                   }
-                                  if (value.trim().length < 3) {
-                                    return "Le mot de passe doit comporter au moins 3 caractères";
+                                  if (value.length < 6) {
+                                    return "Le mot de passe doit comporter au moins 6 caractères";
                                   }
                                   return null;
                                 },
                               ),
-                              const SizedBox(height: 12),
 
-                              // Options supplémentaires (Se souvenir de moi)
-                              Row(
-                                children: [
-                                  SizedBox(
-                                    height: 24,
-                                    width: 24,
-                                    child: Checkbox(
-                                      value: _rememberMe,
-                                      activeColor: const Color(0xFF1E3A8A),
-                                      onChanged: (val) {
+                              // Confirmation du mot de passe en mode inscription
+                              if (!_isLoginMode) ...[
+                                const SizedBox(height: 14),
+                                TextFormField(
+                                  controller: _confirmPasswordController,
+                                  obscureText: _isConfirmPasswordObscured,
+                                  textInputAction: TextInputAction.done,
+                                  onFieldSubmitted: (_) => _handleSubmit(),
+                                  decoration: InputDecoration(
+                                    labelText: "Confirmer le mot de passe *",
+                                    hintText: "••••••••",
+                                    prefixIcon: const Icon(Icons.lock_reset_rounded),
+                                    suffixIcon: IconButton(
+                                      icon: Icon(
+                                        _isConfirmPasswordObscured
+                                            ? Icons.visibility_outlined
+                                            : Icons.visibility_off_outlined,
+                                        color: Colors.grey.shade600,
+                                      ),
+                                      onPressed: () {
                                         setState(() {
-                                          _rememberMe = val ?? true;
+                                          _isConfirmPasswordObscured = !_isConfirmPasswordObscured;
                                         });
                                       },
                                     ),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
                                   ),
-                                  const SizedBox(width: 8),
-                                  const Text(
-                                    "Se souvenir de moi",
-                                    style: TextStyle(fontSize: 13),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 24),
+                                  validator: (value) {
+                                    if (!_isLoginMode) {
+                                      if (value == null || value.isEmpty) {
+                                        return "Veuillez confirmer votre mot de passe";
+                                      }
+                                      if (value != _passwordController.text) {
+                                        return "Les mots de passe ne correspondent pas";
+                                      }
+                                    }
+                                    return null;
+                                  },
+                                ),
+                              ],
+                              const SizedBox(height: 22),
 
-                              // Bouton « Se connecter »
+                              // Bouton d'action principal
                               SizedBox(
                                 height: 50,
                                 child: ElevatedButton(
-                                  onPressed: _isLoading ? null : _handleLogin,
+                                  onPressed: _isLoading ? null : _handleSubmit,
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: const Color(0xFF1E3A8A),
                                     foregroundColor: Colors.white,
@@ -312,14 +461,17 @@ class _LoginScreenState extends State<LoginScreen> {
                                             color: Colors.white,
                                           ),
                                         )
-                                      : const Row(
+                                      : Row(
                                           mainAxisAlignment: MainAxisAlignment.center,
                                           children: [
-                                            Icon(Icons.login, size: 20),
-                                            SizedBox(width: 10),
+                                            Icon(
+                                              _isLoginMode ? Icons.login_rounded : Icons.person_add_rounded,
+                                              size: 20,
+                                            ),
+                                            const SizedBox(width: 10),
                                             Text(
-                                              "Se connecter",
-                                              style: TextStyle(
+                                              _isLoginMode ? "Se connecter" : "Créer mon compte",
+                                              style: const TextStyle(
                                                 fontSize: 16,
                                                 fontWeight: FontWeight.bold,
                                                 letterSpacing: 0.5,
@@ -334,9 +486,9 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 18),
+                    const SizedBox(height: 16),
 
-                    // Badge aide / Info rapide pour la démo
+                    // Information réseau USB & XAMPP
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                       decoration: BoxDecoration(
@@ -347,12 +499,12 @@ class _LoginScreenState extends State<LoginScreen> {
                       child: const Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.info_outline, color: Color(0xFF2DD4BF), size: 16),
+                          Icon(Icons.usb_rounded, color: Color(0xFF2DD4BF), size: 16),
                           SizedBox(width: 8),
                           Flexible(
                             child: Text(
-                              "Démo rapide : identifiants pré-remplis par défaut",
-                              style: TextStyle(color: Colors.white70, fontSize: 12),
+                              "API Locale XAMPP connectée via adb reverse / IP",
+                              style: TextStyle(color: Colors.white70, fontSize: 11.5),
                             ),
                           ),
                         ],

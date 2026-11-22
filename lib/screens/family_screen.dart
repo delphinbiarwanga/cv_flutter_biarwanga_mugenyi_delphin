@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:cv_flutter_biarwanga_mugenyi_delphin/models/family_member.dart';
-import 'package:cv_flutter_biarwanga_mugenyi_delphin/services/url_launcher_service.dart';
+import 'package:cv_flutter_biarwanga_mugenyi_delphin/models/famille_membre.dart';
+import 'package:cv_flutter_biarwanga_mugenyi_delphin/services/api_service.dart';
+import 'package:cv_flutter_biarwanga_mugenyi_delphin/widgets/famille_membre_form_dialog.dart';
 
 class FamilyScreen extends StatefulWidget {
   const FamilyScreen({super.key});
@@ -10,63 +11,170 @@ class FamilyScreen extends StatefulWidget {
 }
 
 class _FamilyScreenState extends State<FamilyScreen> {
-  final List<FamilyMember> _allMembers = FamilyMember.getSampleFamily();
+  List<FamilleMembre> _allMembers = [];
+  bool _isLoading = true;
+  String? _errorMessage;
+
   String _selectedFilter = "Tous";
   bool _isGridView = false;
 
-  List<FamilyMember> get _filteredMembers {
-    if (_selectedFilter == "Tous") return _allMembers;
-    if (_selectedFilter == "Père / Parents") {
-      return _allMembers.where((m) => m.relation == "Père" || m.relation == "Mère").toList();
+  @override
+  void initState() {
+    super.initState();
+    _fetchMembers();
+  }
+
+  Future<void> _fetchMembers() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final list = await ApiService.getFamilleMembres();
+      if (!mounted) return;
+      setState(() {
+        _allMembers = list;
+        _isLoading = false;
+      });
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = e.fullErrorMessage;
+        _isLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = "Impossible de contacter l'API XAMPP : $e";
+        _isLoading = false;
+      });
     }
-    if (_selectedFilter == "Frères") {
+  }
+
+  List<FamilleMembre> get _filteredMembers {
+    if (_selectedFilter == "Tous") return _allMembers;
+    if (_selectedFilter == "Parents") {
       return _allMembers
-          .where((m) => m.relation.contains("Frère"))
+          .where((m) =>
+              m.parente.toLowerCase().contains("père") ||
+              m.parente.toLowerCase().contains("mere") ||
+              m.parente.toLowerCase().contains("mère") ||
+              m.parente.toLowerCase().contains("parent"))
+          .toList();
+    }
+    if (_selectedFilter == "Fratrie") {
+      return _allMembers
+          .where((m) =>
+              m.parente.toLowerCase().contains("frère") ||
+              m.parente.toLowerCase().contains("frere") ||
+              m.parente.toLowerCase().contains("sœur") ||
+              m.parente.toLowerCase().contains("soeur"))
           .toList();
     }
     return _allMembers;
   }
 
-  Widget _buildMemberImage(FamilyMember member, {required double width, required double height, double radius = 0}) {
-    Widget imageWidget;
-    if (member.isAsset) {
-      imageWidget = Image.asset(
-        member.imagePath,
-        width: width,
-        height: height,
-        fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) => Container(
-          width: width,
-          height: height,
-          color: const Color(0xFF1E3A8A).withAlpha(30),
-          child: const Icon(Icons.person, color: Color(0xFF1E3A8A), size: 32),
-        ),
-      );
-    } else {
-      imageWidget = Image.network(
-        member.imagePath,
-        width: width,
-        height: height,
-        fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) => Container(
-          width: width,
-          height: height,
-          color: const Color(0xFF1E3A8A).withAlpha(30),
-          child: const Icon(Icons.person, color: Color(0xFF1E3A8A), size: 32),
-        ),
-      );
-    }
+  // --- ACTIONS CRUD ---
 
-    if (radius > 0) {
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(radius),
-        child: imageWidget,
+  Future<void> _openAddDialog() async {
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const FamilleMembreFormDialog(),
+    );
+
+    if (result == true) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Membre de famille ajouté avec succès !"),
+          backgroundColor: Color(0xFF0D9488),
+          behavior: SnackBarBehavior.floating,
+        ),
       );
+      _fetchMembers();
     }
-    return ClipOval(child: imageWidget);
   }
 
-  void _showMemberDetails(BuildContext context, FamilyMember member) {
+  Future<void> _openEditDialog(FamilleMembre member) async {
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => FamilleMembreFormDialog(memberToEdit: member),
+    );
+
+    if (result == true) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Membre « ${member.nomComplet} » mis à jour !"),
+          backgroundColor: const Color(0xFF0D9488),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      _fetchMembers();
+    }
+  }
+
+  Future<void> _confirmDelete(FamilleMembre member) async {
+    final bool? confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Colors.redAccent),
+            SizedBox(width: 10),
+            Text("Confirmation"),
+          ],
+        ),
+        content: Text(
+          "Voulez-vous vraiment supprimer définitivement « ${member.nomComplet} » de la base de données ?",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text("Annuler"),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.redAccent,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text("Supprimer"),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    try {
+      await ApiService.deleteFamilleMembre(member.id);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("« ${member.nomComplet} » a été supprimé."),
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      _fetchMembers();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Erreur lors de la suppression : $e"),
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  void _showMemberDetails(BuildContext context, FamilleMembre member) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
@@ -101,17 +209,17 @@ class _FamilyScreenState extends State<FamilyScreen> {
               // Photo et infos principales
               Row(
                 children: [
-                  _buildMemberImage(member, width: 80, height: 80, radius: 18),
+                  _buildAvatar(member, size: 76),
                   const SizedBox(width: 16),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          member.name,
+                          member.nomComplet,
                           style: theme.textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.bold,
-                            fontSize: 17,
+                            fontSize: 18,
                           ),
                         ),
                         const SizedBox(height: 4),
@@ -122,20 +230,12 @@ class _FamilyScreenState extends State<FamilyScreen> {
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(
-                            "Lien : ${member.relation}",
+                            "Lien : ${member.parente}",
                             style: const TextStyle(
                               color: Color(0xFF0D9488),
                               fontSize: 12,
                               fontWeight: FontWeight.bold,
                             ),
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          member.profession,
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: isDark ? Colors.grey.shade300 : Colors.grey.shade700,
                           ),
                         ),
                       ],
@@ -145,66 +245,62 @@ class _FamilyScreenState extends State<FamilyScreen> {
               ),
               const SizedBox(height: 20),
 
-              // Description
-              Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: isDark ? Colors.white10 : Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      "À propos",
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      member.description,
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: isDark ? Colors.grey.shade300 : Colors.grey.shade800,
-                        height: 1.4,
+              // Détails complets depuis la BDD
+              _buildDetailTile(
+                icon: Icons.calendar_today_rounded,
+                title: "Date de naissance",
+                value: member.dateNaissance,
+                color: const Color(0xFF1E3A8A),
+              ),
+              _buildDetailTile(
+                icon: Icons.location_city_rounded,
+                title: "Lieu de naissance",
+                value: member.lieuNaissance,
+                color: const Color(0xFF0D9488),
+              ),
+              _buildDetailTile(
+                icon: Icons.tag_rounded,
+                title: "Identifiant BDD",
+                value: "#${member.id}",
+                color: Colors.grey,
+              ),
+              const SizedBox(height: 20),
+
+              // Boutons d'action : Modifier & Supprimer
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      icon: const Icon(Icons.edit_outlined, size: 18),
+                      label: const Text("Modifier"),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                       ),
+                      onPressed: () {
+                        Navigator.pop(context);
+                        _openEditDialog(member);
+                      },
                     ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // Détails complémentaires
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.location_on, color: Color(0xFF1E3A8A)),
-                title: const Text("Résidence actuelle", style: TextStyle(fontSize: 13)),
-                subtitle: Text(
-                  member.location,
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                ),
-              ),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.phone, color: Color(0xFF0D9488)),
-                title: const Text("Numéro de contact", style: TextStyle(fontSize: 13)),
-                subtitle: Text(
-                  member.phone,
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                ),
-                trailing: IconButton(
-                  icon: const Icon(Icons.call, color: Color(0xFF0D9488)),
-                  onPressed: () => UrlLauncherService.makePhoneCall(context, member.phone),
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // Bouton Fermer
-              ElevatedButton(
-                onPressed: () => Navigator.pop(context),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF1E3A8A),
-                ),
-                child: const Text("Fermer"),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      icon: const Icon(Icons.delete_outline, size: 18),
+                      label: const Text("Supprimer"),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.redAccent,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      onPressed: () {
+                        Navigator.pop(context);
+                        _confirmDelete(member);
+                      },
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -213,121 +309,234 @@ class _FamilyScreenState extends State<FamilyScreen> {
     );
   }
 
+  static Widget _buildDetailTile({
+    required IconData icon,
+    required String title,
+    required String value,
+    required Color color,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6.0),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withAlpha(20),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, size: 18, color: color),
+          ),
+          const SizedBox(width: 12),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+              Text(
+                value,
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAvatar(FamilleMembre member, {required double size}) {
+    final imageUrl = member.resolvedImageUrl;
+
+    if (imageUrl != null && imageUrl.isNotEmpty) {
+      return ClipOval(
+        child: Image.network(
+          imageUrl,
+          width: size,
+          height: size,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) => Container(
+            width: size,
+            height: size,
+            color: const Color(0xFF1E3A8A).withAlpha(20),
+            child: Icon(Icons.person, color: const Color(0xFF1E3A8A), size: size * 0.55),
+          ),
+          loadingBuilder: (context, child, loadingProgress) {
+            if (loadingProgress == null) return child;
+            return Container(
+              width: size,
+              height: size,
+              color: Colors.grey.shade100,
+              child: Center(
+                child: SizedBox(
+                  width: size * 0.4,
+                  height: size * 0.4,
+                  child: const CircularProgressIndicator(strokeWidth: 2),
+                ),
+              ),
+            );
+          },
+        ),
+      );
+    }
+
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E3A8A).withAlpha(20),
+        shape: BoxShape.circle,
+      ),
+      child: Icon(
+        Icons.person,
+        color: const Color(0xFF1E3A8A),
+        size: size * 0.55,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    return SingleChildScrollView(
-      physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 18.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // Bannière En-tête Famille
-          Container(
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: isDark
-                    ? [const Color(0xFF1E293B), const Color(0xFF0F172A)]
-                    : [const Color(0xFF0D9488), const Color(0xFF0F766E)],
-              ),
-              borderRadius: BorderRadius.circular(18),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFF0D9488).withAlpha(50),
-                  blurRadius: 14,
-                  offset: const Offset(0, 6),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withAlpha(30),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.diversity_1_rounded, color: Colors.white, size: 32),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        "CERCLE FAMILIAL",
-                        style: TextStyle(
-                          color: Color(0xFF99F6E4),
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 1.5,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      const Text(
-                        "Membres de ma Famille",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        "${_allMembers.length} membres présentés avec leurs vraies photos",
-                        style: TextStyle(
-                          color: Colors.white.withAlpha(200),
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // Filtres et Bascule d'Affichage (ListView / GridView)
-          Row(
+    return Scaffold(
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _openAddDialog,
+        backgroundColor: const Color(0xFF1E3A8A),
+        foregroundColor: Colors.white,
+        icon: const Icon(Icons.person_add_rounded),
+        label: const Text("Ajouter"),
+      ),
+      body: RefreshIndicator(
+        onRefresh: _fetchMembers,
+        color: const Color(0xFF1E3A8A),
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 18.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Expanded(
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: [
-                      _buildFilterChip("Tous"),
-                      _buildFilterChip("Père / Parents"),
-                      _buildFilterChip("Frères"),
-                    ],
+              // Bannière En-tête
+              Container(
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: isDark
+                        ? [const Color(0xFF1E293B), const Color(0xFF0F172A)]
+                        : [const Color(0xFF0D9488), const Color(0xFF0F766E)],
                   ),
+                  borderRadius: BorderRadius.circular(18),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF0D9488).withAlpha(50),
+                      blurRadius: 14,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withAlpha(30),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.diversity_1_rounded, color: Colors.white, size: 32),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            "BASE DE DONNÉES EN DIRECT",
+                            style: TextStyle(
+                              color: Color(0xFF99F6E4),
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 1.5,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          const Text(
+                            "Membres de ma Famille",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            "${_allMembers.length} membre(s) synchronisé(s) avec l'API",
+                            style: TextStyle(
+                              color: Colors.white.withAlpha(200),
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              IconButton(
-                icon: Icon(_isGridView ? Icons.view_list_rounded : Icons.grid_view_rounded),
-                tooltip: _isGridView ? "Vue Liste" : "Vue Grille",
-                onPressed: () {
-                  setState(() {
-                    _isGridView = !_isGridView;
-                  });
-                },
+              const SizedBox(height: 16),
+
+              // Filtres et Bascule Vue Liste / Grille
+              Row(
+                children: [
+                  Expanded(
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          _buildFilterChip("Tous"),
+                          _buildFilterChip("Parents"),
+                          _buildFilterChip("Fratrie"),
+                        ],
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    icon: Icon(_isGridView ? Icons.view_list_rounded : Icons.grid_view_rounded),
+                    tooltip: _isGridView ? "Vue Liste" : "Vue Grille",
+                    onPressed: () {
+                      setState(() {
+                        _isGridView = !_isGridView;
+                      });
+                    },
+                  ),
+                ],
               ),
+              const SizedBox(height: 12),
+
+              // Contenu principal (Chargement, Erreur ou Liste)
+              if (_isLoading)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 40.0),
+                  child: Center(
+                    child: Column(
+                      children: [
+                        CircularProgressIndicator(color: Color(0xFF1E3A8A)),
+                        SizedBox(height: 14),
+                        Text("Chargement des membres depuis l'API..."),
+                      ],
+                    ),
+                  ),
+                )
+              else if (_errorMessage != null)
+                _buildErrorState()
+              else if (_filteredMembers.isEmpty)
+                _buildEmptyState()
+              else if (_isGridView)
+                _buildGridView(isDark)
+              else
+                _buildListView(isDark),
+
+              const SizedBox(height: 80), // Espace pour le FAB
             ],
           ),
-          const SizedBox(height: 12),
-
-          // Affichage (ListView ou GridView)
-          _filteredMembers.isEmpty
-              ? _buildEmptyState()
-              : _isGridView
-                  ? _buildGridView(isDark)
-                  : _buildListView(isDark),
-
-          const SizedBox(height: 20),
-        ],
+        ),
       ),
     );
   }
@@ -360,40 +569,27 @@ class _FamilyScreenState extends State<FamilyScreen> {
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       itemCount: _filteredMembers.length,
-      separatorBuilder: (context, index) => const SizedBox(height: 12),
+      separatorBuilder: (context, index) => const SizedBox(height: 10),
       itemBuilder: (context, index) {
         final member = _filteredMembers[index];
         return Card(
-          elevation: 2.5,
+          elevation: 2,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           child: InkWell(
             onTap: () => _showMemberDetails(context, member),
             borderRadius: BorderRadius.circular(16),
             child: Padding(
-              padding: const EdgeInsets.all(14.0),
+              padding: const EdgeInsets.all(12.0),
               child: Row(
                 children: [
-                  // Photo avec bordure
                   Container(
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      border: Border.all(
-                        color: const Color(0xFF0D9488),
-                        width: 2.5,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withAlpha(20),
-                          blurRadius: 6,
-                          offset: const Offset(0, 3),
-                        ),
-                      ],
+                      border: Border.all(color: const Color(0xFF0D9488), width: 2),
                     ),
-                    child: _buildMemberImage(member, width: 62, height: 62),
+                    child: _buildAvatar(member, size: 58),
                   ),
                   const SizedBox(width: 14),
-
-                  // Informations
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -403,7 +599,7 @@ class _FamilyScreenState extends State<FamilyScreen> {
                           children: [
                             Expanded(
                               child: Text(
-                                member.name,
+                                member.nomComplet,
                                 style: const TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 15,
@@ -415,12 +611,10 @@ class _FamilyScreenState extends State<FamilyScreen> {
                               decoration: BoxDecoration(
                                 color: const Color(0xFF1E3A8A).withAlpha(15),
                                 borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: const Color(0xFF1E3A8A).withAlpha(50),
-                                ),
+                                border: Border.all(color: const Color(0xFF1E3A8A).withAlpha(40)),
                               ),
                               child: Text(
-                                member.relation,
+                                member.parente,
                                 style: const TextStyle(
                                   fontSize: 11,
                                   fontWeight: FontWeight.bold,
@@ -431,24 +625,18 @@ class _FamilyScreenState extends State<FamilyScreen> {
                           ],
                         ),
                         const SizedBox(height: 4),
-                        Text(
-                          member.profession,
-                          style: TextStyle(
-                            fontSize: 12.5,
-                            color: isDark ? const Color(0xFF2DD4BF) : const Color(0xFF0D9488),
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 3),
                         Row(
                           children: [
-                            Icon(Icons.location_on, size: 13, color: Colors.grey.shade500),
+                            Icon(Icons.location_on_outlined, size: 14, color: Colors.grey.shade500),
                             const SizedBox(width: 4),
-                            Text(
-                              member.location,
-                              style: TextStyle(
-                                fontSize: 11.5,
-                                color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+                            Expanded(
+                              child: Text(
+                                "${member.lieuNaissance} • Née le ${member.dateNaissance}",
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: isDark ? Colors.grey.shade300 : Colors.grey.shade600,
+                                ),
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
                           ],
@@ -456,8 +644,35 @@ class _FamilyScreenState extends State<FamilyScreen> {
                       ],
                     ),
                   ),
-                  const SizedBox(width: 6),
-                  const Icon(Icons.chevron_right, color: Colors.grey),
+                  PopupMenuButton<String>(
+                    icon: const Icon(Icons.more_vert, color: Colors.grey),
+                    onSelected: (val) {
+                      if (val == 'edit') _openEditDialog(member);
+                      if (val == 'delete') _confirmDelete(member);
+                    },
+                    itemBuilder: (context) => [
+                      const PopupMenuItem(
+                        value: 'edit',
+                        child: Row(
+                          children: [
+                            Icon(Icons.edit_outlined, size: 18, color: Color(0xFF1E3A8A)),
+                            SizedBox(width: 8),
+                            Text("Modifier"),
+                          ],
+                        ),
+                      ),
+                      const PopupMenuItem(
+                        value: 'delete',
+                        child: Row(
+                          children: [
+                            Icon(Icons.delete_outline, size: 18, color: Colors.redAccent),
+                            SizedBox(width: 8),
+                            Text("Supprimer", style: TextStyle(color: Colors.redAccent)),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),
@@ -481,7 +696,7 @@ class _FamilyScreenState extends State<FamilyScreen> {
       itemBuilder: (context, index) {
         final member = _filteredMembers[index];
         return Card(
-          elevation: 2.5,
+          elevation: 2,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           child: InkWell(
             onTap: () => _showMemberDetails(context, member),
@@ -494,16 +709,13 @@ class _FamilyScreenState extends State<FamilyScreen> {
                   Container(
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      border: Border.all(
-                        color: const Color(0xFF0D9488),
-                        width: 2.5,
-                      ),
+                      border: Border.all(color: const Color(0xFF0D9488), width: 2),
                     ),
-                    child: _buildMemberImage(member, width: 72, height: 72),
+                    child: _buildAvatar(member, size: 68),
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 8),
                   Text(
-                    member.name,
+                    member.nomComplet,
                     textAlign: TextAlign.center,
                     style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                     maxLines: 1,
@@ -517,7 +729,7 @@ class _FamilyScreenState extends State<FamilyScreen> {
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
-                      member.relation,
+                      member.parente,
                       style: const TextStyle(
                         fontSize: 10.5,
                         fontWeight: FontWeight.bold,
@@ -527,13 +739,13 @@ class _FamilyScreenState extends State<FamilyScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    member.profession,
+                    member.lieuNaissance,
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 11,
-                      color: isDark ? const Color(0xFF2DD4BF) : const Color(0xFF0D9488),
+                      color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
                     ),
-                    maxLines: 2,
+                    maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ],
@@ -552,9 +764,51 @@ class _FamilyScreenState extends State<FamilyScreen> {
         children: [
           Icon(Icons.people_outline, size: 50, color: Colors.grey.shade400),
           const SizedBox(height: 12),
+          const Text(
+            "Aucun membre de famille trouvé.",
+            style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 6),
           Text(
-            "Aucun membre trouvé pour ce filtre.",
-            style: TextStyle(color: Colors.grey.shade600),
+            "Appuyez sur le bouton « Ajouter » pour enregistrer un premier membre dans la base de données.",
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+          ),
+          const SizedBox(height: 16),
+          ElevatedButton.icon(
+            onPressed: _openAddDialog,
+            icon: const Icon(Icons.add),
+            label: const Text("Ajouter un membre"),
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1E3A8A)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildErrorState() {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        children: [
+          const Icon(Icons.cloud_off_rounded, size: 48, color: Colors.redAccent),
+          const SizedBox(height: 12),
+          const Text(
+            "Impossible de joindre l'API",
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            _errorMessage ?? "Erreur réseau inconnue.",
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+          ),
+          const SizedBox(height: 16),
+          ElevatedButton.icon(
+            onPressed: _fetchMembers,
+            icon: const Icon(Icons.refresh),
+            label: const Text("Réessayer"),
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1E3A8A)),
           ),
         ],
       ),

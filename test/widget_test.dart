@@ -4,13 +4,13 @@ import 'package:cv_flutter_biarwanga_mugenyi_delphin/main.dart';
 void main() {
   testWidgets('Smoke test: Vérification du chargement de la page de connexion',
       (WidgetTester tester) async {
-    // Lance l'application
-    await tester.pumpWidget(const MyApp());
+    // Lance l'application en mode déconnecté
+    await tester.pumpWidget(const MyApp(isLoggedIn: false));
 
-    // Vérifie que le titre et le bouton de connexion sont présents
-    expect(find.text('PORTAIL CV PROFESSIONNEL'), findsOneWidget);
+    // Vérifie que le portail, les onglets et le bouton sont présents
+    expect(find.text('PORTAIL CV & FAMILLE XAMPP'), findsOneWidget);
+    expect(find.text('Connexion'), findsOneWidget);
+    expect(find.text('Inscription'), findsOneWidget);
     expect(find.text('Se connecter'), findsOneWidget);
-    expect(find.text('Identifiant'), findsOneWidget);
-    expect(find.text('Mot de passe'), findsOneWidget);
   });
 }
