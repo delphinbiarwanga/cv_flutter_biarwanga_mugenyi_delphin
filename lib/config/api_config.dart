@@ -2,17 +2,10 @@ class ApiConfig {
   /// URL de base de l'API REST locale hébergée sur XAMPP.
   ///
   /// Pour tester sur un TÉLÉPHONE PHYSIQUE connecté par câble USB :
-  /// 1. Exécutez dans le terminal de votre PC :
-  ///    adb reverse tcp:80 tcp:80
-  ///    (Cela redirige le port 80 du téléphone vers le port 80 de votre PC XAMPP)
-  ///    Dans ce cas, utilisez : 'http://127.0.0.1/api-test/public'
-  ///
-  /// 2. Si vous êtes sur le MÊME RÉSEAU WI-FI sans redirection adb, remplacez par l'IP locale de votre PC :
-  ///    Exemple : 'http://192.168.1.15/api-test/public' (trouvez votre IP avec 'ipconfig' sous Windows)
-  ///
-  /// 3. Si vous utilisez l'émulateur Android standard :
-  ///    Utilisez : 'http://10.0.2.2/api-test/public'
-  static const String baseUrl = 'http://127.0.0.1/api-test/public';
+  /// Le port 80 sur Android est un port privilégié (< 1024) qui requiert root.
+  /// On utilise le port 8080 redirigé vers le port 80 du PC avec :
+  ///    adb reverse tcp:8080 tcp:80
+  static const String baseUrl = 'http://127.0.0.1:8080/api-test/public';
 
   // Endpoints Authentification
   static const String registerEndpoint = '$baseUrl/accounts/register';

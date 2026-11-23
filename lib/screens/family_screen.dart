@@ -449,7 +449,7 @@ class _FamilyScreenState extends State<FamilyScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Text(
-                            "BASE DE DONNÉES EN DIRECT",
+                            "RÉPERTOIRE FAMILIAL",
                             style: TextStyle(
                               color: Color(0xFF99F6E4),
                               fontSize: 11,
@@ -468,7 +468,7 @@ class _FamilyScreenState extends State<FamilyScreen> {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            "${_allMembers.length} membre(s) synchronisé(s) avec l'API",
+                            "${_allMembers.length} membre(s) enregistré(s)",
                             style: TextStyle(
                               color: Colors.white.withAlpha(200),
                               fontSize: 12,

@@ -21,6 +21,18 @@
 
 ---
 
+## 🎬 Vidéo de Démonstration
+
+Voici la vidéo de démonstration de mon application mobile développée avec **Flutter** :
+
+<p align="center">
+  <a href="https://drive.google.com/file/d/1yMxKRQte45RKYpFMi6vLf_kpyTWyXD6k/view?usp=drive_link" target="_blank">
+    <img src="https://img.shields.io/badge/▶_Voir_la_démo_de_l'app_Flutter-02569B?style=for-the-badge&logo=flutter&logoColor=white" alt="Vidéo de démonstration de l'application Flutter" />
+  </a>
+</p>
+
+---
+
 ## 📸 Aperçu de l'Application (Captures d'Écran)
 
 Voici les captures d'écran de l'application en cours d'exécution :
@@ -161,48 +173,3 @@ cv_flutter_biarwanga_mugenyi_delphin/
 │   └── widget_test.dart         # Tests automatisés
 ├── pubspec.yaml                 # Dépendances (url_launcher, cupertino_icons, assets)
 └── README.md                    # Documentation complète avec photos
-```
-
----
-
-## 🚀 Installation & Exécution Locale
-
-### 1. Cloner le projet
-```bash
-git clone https://github.com/delphinbiarwanga/cv_flutter_biarwanga_mugenyi_delphin.git
-cd cv_flutter_biarwanga_mugenyi_delphin
-```
-
-### 2. Récupérer les dépendances
-```bash
-flutter pub get
-```
-
-### 3. Lancer l'application
-```bash
-flutter run
-```
-
-### 4. Lancer les tests unitaires
-```bash
-flutter test
-```
-
----
-
-## 📤 Publication sur GitHub
-
-Pour pousser ce projet sur votre compte GitHub :
-
-```bash
-git init
-git add .
-git commit -m "feat: Version finale de l'application CV Flutter avec photos et captures d'écran"
-git branch -M main
-git remote add origin https://github.com/delphinbiarwanga/cv_flutter_biarwanga_mugenyi_delphin.git
-git push -u origin main
-```
-
----
-
-*Développé avec fierté par **BIARWANGA MUGENYI DELPHIN** — Licence Réseau Système & Télécommunication.*

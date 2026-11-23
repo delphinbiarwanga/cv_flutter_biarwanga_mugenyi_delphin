@@ -198,7 +198,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                     // Titres
                     const Text(
-                      "PORTAIL CV & FAMILLE XAMPP",
+                      "PORTAIL DU CV PROFESSIONNEL",
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 12,
@@ -484,30 +484,6 @@ class _LoginScreenState extends State<LoginScreen> {
                             ],
                           ),
                         ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Information réseau USB & XAMPP
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withAlpha(25),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: Colors.white24),
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.usb_rounded, color: Color(0xFF2DD4BF), size: 16),
-                          SizedBox(width: 8),
-                          Flexible(
-                            child: Text(
-                              "API Locale XAMPP connectée via adb reverse / IP",
-                              style: TextStyle(color: Colors.white70, fontSize: 11.5),
-                            ),
-                          ),
-                        ],
                       ),
                     ),
                   ],

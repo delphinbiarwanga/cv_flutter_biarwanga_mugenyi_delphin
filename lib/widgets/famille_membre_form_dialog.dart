@@ -112,12 +112,16 @@ class _FamilleMembreFormDialogState extends State<FamilleMembreFormDialog> {
   }
 
   Future<void> _selectDate() async {
-    DateTime initial = DateTime.now();
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    DateTime initial = DateTime(2000, 1, 1);
+
     if (_dateNaissanceController.text.trim().isNotEmpty) {
       try {
         final parsed = DateTime.parse(_dateNaissanceController.text.trim());
-        if (parsed.isBefore(DateTime.now())) {
-          initial = parsed;
+        final parsedDateOnly = DateTime(parsed.year, parsed.month, parsed.day);
+        if (!parsedDateOnly.isAfter(today) && !parsedDateOnly.isBefore(DateTime(1900, 1, 1))) {
+          initial = parsedDateOnly;
         }
       } catch (_) {}
     }
@@ -125,9 +129,8 @@ class _FamilleMembreFormDialogState extends State<FamilleMembreFormDialog> {
     final DateTime? picked = await showDatePicker(
       context: context,
       initialDate: initial,
-      firstDate: DateTime(1900),
-      lastDate: DateTime.now(), // Pas dans le futur (règle API)
-      locale: const Locale('fr', 'FR'),
+      firstDate: DateTime(1900, 1, 1),
+      lastDate: today,
     );
 
     if (picked != null) {

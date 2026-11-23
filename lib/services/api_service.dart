@@ -67,7 +67,7 @@ class ApiService {
       throw _handleError(response.statusCode, jsonBody);
     } on SocketException catch (_) {
       throw ApiException(
-        "Impossible de contacter le serveur XAMPP.\nVérifiez qu'Apache est démarré et que la connexion USB ('adb reverse tcp:80 tcp:80') ou l'IP est configurée.",
+        "Impossible de contacter le serveur XAMPP.\nVérifiez qu'Apache est démarré et que la commande 'adb reverse tcp:8080 tcp:80' est active.",
       );
     } on http.ClientException catch (e) {
       throw ApiException("Erreur de connexion : ${e.message}");
@@ -103,7 +103,7 @@ class ApiService {
       throw _handleError(response.statusCode, jsonBody);
     } on SocketException catch (_) {
       throw ApiException(
-        "Serveur XAMPP inaccessible.\nVérifiez qu'Apache est allumé et que le pont USB 'adb reverse tcp:80 tcp:80' est actif.",
+        "Serveur XAMPP inaccessible.\nVérifiez qu'Apache est allumé et que le pont USB 'adb reverse tcp:8080 tcp:80' est actif.",
       );
     } on http.ClientException catch (e) {
       throw ApiException("Erreur de connexion : ${e.message}");

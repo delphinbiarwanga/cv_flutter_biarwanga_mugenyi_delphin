@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:cv_flutter_biarwanga_mugenyi_delphin/models/cv_data.dart';
 import 'package:cv_flutter_biarwanga_mugenyi_delphin/screens/cv_home_screen.dart';
 import 'package:cv_flutter_biarwanga_mugenyi_delphin/screens/family_screen.dart';
-import 'package:cv_flutter_biarwanga_mugenyi_delphin/screens/stats_screen.dart';
 import 'package:cv_flutter_biarwanga_mugenyi_delphin/screens/contact_screen.dart';
 import 'package:cv_flutter_biarwanga_mugenyi_delphin/screens/login_screen.dart';
 import 'package:cv_flutter_biarwanga_mugenyi_delphin/services/session_service.dart';
@@ -29,14 +28,12 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   final List<Widget> _pages = const [
     CVHomeScreen(),
     FamilyScreen(),
-    StatsScreen(),
     ContactScreen(),
   ];
 
   final List<String> _titles = const [
     "Mon CV Professionnel",
-    "Ma Famille (API BDD)",
-    "Statistiques de la Famille",
+    "Ma Famille",
     "Mes Coordonnées",
   ];
 
@@ -138,7 +135,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
               const Text("• Session persistante SharedPreferences"),
               const Text("• CRUD complet Membres de famille (GET, POST, PUT, DELETE)"),
               const Text("• Gestion upload d'images multipart & dates AAAA-MM-JJ"),
-              const Text("• Statistiques dynamiques en temps réel"),
               const Text("• Contacts interactifs (Appels, Emails, WhatsApp, URLs)"),
               const SizedBox(height: 12),
               const Text(
@@ -270,7 +266,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                   const SizedBox(height: 8),
                   ListTile(
                     leading: const Icon(Icons.badge_rounded, color: Color(0xFF1E3A8A)),
-                    title: const Text("Page 2 : Mon CV Complet"),
+                    title: const Text("Mon CV Complet"),
                     subtitle: const Text("Profil, études, stages et loisirs"),
                     selected: _currentIndex == 0,
                     selectedTileColor: const Color(0xFF1E3A8A).withAlpha(25),
@@ -281,8 +277,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                   ),
                   ListTile(
                     leading: const Icon(Icons.diversity_1_rounded, color: Color(0xFF0D9488)),
-                    title: const Text("Page 3 : Ma Famille"),
-                    subtitle: const Text("CRUD & synchronisation BDD"),
+                    title: const Text("Ma Famille"),
+                    subtitle: const Text("Membres & synchronisation BDD"),
                     selected: _currentIndex == 1,
                     selectedTileColor: const Color(0xFF0D9488).withAlpha(25),
                     onTap: () {
@@ -291,25 +287,14 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                     },
                   ),
                   ListTile(
-                    leading: const Icon(Icons.analytics_rounded, color: Color(0xFF2563EB)),
-                    title: const Text("Page Statistiques"),
-                    subtitle: const Text("Analyses calculées en temps réel"),
-                    selected: _currentIndex == 2,
-                    selectedTileColor: const Color(0xFF2563EB).withAlpha(25),
-                    onTap: () {
-                      Navigator.pop(context);
-                      _onItemTapped(2);
-                    },
-                  ),
-                  ListTile(
                     leading: const Icon(Icons.contact_phone_rounded, color: Color(0xFFD97706)),
-                    title: const Text("Page 4 : Mes Coordonnées"),
+                    title: const Text("Mes Coordonnées"),
                     subtitle: const Text("Contacts et liens cliquables"),
-                    selected: _currentIndex == 3,
+                    selected: _currentIndex == 2,
                     selectedTileColor: const Color(0xFFD97706).withAlpha(25),
                     onTap: () {
                       Navigator.pop(context);
-                      _onItemTapped(3);
+                      _onItemTapped(2);
                     },
                   ),
                   const Divider(height: 24),
@@ -406,11 +391,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
             icon: Icon(Icons.diversity_1_outlined),
             selectedIcon: Icon(Icons.diversity_1_rounded),
             label: "Famille",
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.analytics_outlined),
-            selectedIcon: Icon(Icons.analytics_rounded),
-            label: "Statistiques",
           ),
           NavigationDestination(
             icon: Icon(Icons.contact_phone_outlined),
